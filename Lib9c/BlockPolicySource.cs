@@ -41,12 +41,6 @@ namespace Nekoyume.BlockChain
         // FIXME: Fix version and value when release.
         public const long V100070ObsoleteIndex = 3000000;
 
-        // FIXME: Fix version and value when release.
-        public const long V100073ObsoleteIndex = 3000000;
-
-        // FIXME: Should be finalized before release.
-        public const int maxTransactionsPerSignerPerBlockV100074 = 4;
-
         private readonly TimeSpan _blockInterval = TimeSpan.FromSeconds(8);
 
         public readonly ActionRenderer ActionRenderer = new ActionRenderer();
@@ -90,16 +84,13 @@ namespace Nekoyume.BlockChain
                 blockInterval: _blockInterval,
                 minimumDifficulty: minimumDifficulty,
                 difficultyBoundDivisor: DifficultyBoundDivisor,
-                minTransactionsPerBlock: 0,
                 maxTransactionsPerBlock: maximumTransactions,
                 maxBlockBytes: MaxBlockBytes,
                 maxGenesisBytes: MaxGenesisBytes,
                 ignoreHardcodedPolicies: ignoreHardcodedPolicies,
                 permissionedMiningPolicy: permissionedMiningPolicy,
-                doesTransactionFollowPolicy: DoesTransactionFollowPolicy,
-                getMaxTransactionsPerSignerPerBlock: (long index) => index > V100073ObsoleteIndex
-                    ? maxTransactionsPerSignerPerBlockV100074
-                    : maximumTransactions);
+                doesTransactionFollowPolicy: DoesTransactionFollowPolicy
+            );
 #endif
         }
 

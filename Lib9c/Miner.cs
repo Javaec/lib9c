@@ -13,14 +13,13 @@ using Libplanet.Net;
 using Libplanet.Tx;
 using Nekoyume.Action;
 using Serilog;
-using NCAction = Libplanet.Action.PolymorphicAction<Nekoyume.Action.ActionBase>;
 
 namespace Nekoyume.BlockChain
 {
     public class Miner
     {
-        private readonly BlockChain<NCAction> _chain;
-        private readonly Swarm<NCAction> _swarm;
+        private readonly BlockChain<PolymorphicAction<ActionBase>> _chain;
+        private readonly Swarm<PolymorphicAction<ActionBase>> _swarm;
         private readonly PrivateKey _privateKey;
         // TODO we must justify it.
         private static readonly ImmutableHashSet<Address> _bannedAccounts = new[]
@@ -43,29 +42,29 @@ namespace Nekoyume.BlockChain
 
         public Address Address => _privateKey.ToAddress();
 
-        public Transaction<NCAction> StageProofTransaction()
+        public Transaction<PolymorphicAction<ActionBase>> StageProofTransaction()
         {
             // We assume authorized miners create no transactions at all except for
             // proof transactions.  Without the assumption, nonces for proof txs become
             // much complicated to determine.
-            var proof = Transaction<NCAction>.Create(
+            var proof = Transaction<PolymorphicAction<ActionBase>>.Create(
                 _chain.GetNextTxNonce(_privateKey.ToAddress()),
                 _privateKey,
                 _chain.Genesis.Hash,
-                new NCAction[0]
+                new PolymorphicAction<ActionBase>[0]
             );
             _chain.StageTransaction(proof);
             return proof;
         }
 
-        public async Task<Block<NCAction>> MineBlockAsync(
+        public async Task<Block<PolymorphicAction<ActionBase>>> MineBlockAsync(
             int maxTransactions,
             CancellationToken cancellationToken)
         {
-            var txs = new HashSet<Transaction<NCAction>>();
+            var txs = new HashSet<Transaction<PolymorphicAction<ActionBase>>>();
             var invalidTxs = txs;
 
-            Block<NCAction> block = null;
+            Block<PolymorphicAction<ActionBase>> block = null;
             try
             {
                 if (AuthorizedMiner)
@@ -76,30 +75,25 @@ namespace Nekoyume.BlockChain
                         .ForEach(tx => _chain.UnstageTransaction(tx));
                 }
 
-                IEnumerable<Transaction<NCAction>> bannedTxs = _chain.GetStagedTransactionIds()
+                IEnumerable<Transaction<PolymorphicAction<ActionBase>>> bannedTxs = _chain.GetStagedTransactionIds()
                     .Select(txId => _chain.GetTransaction(txId))
                     .Where(tx => _bannedAccounts.Contains(tx.Signer));
-                foreach (Transaction<NCAction> tx in bannedTxs)
+                foreach (Transaction<PolymorphicAction<ActionBase>> tx in bannedTxs)
                 {
                     _chain.UnstageTransaction(tx);
                 }
 
-                // All miner needs proof in permissioned mining:
-                Transaction<NCAction> proof = StageProofTransaction();
-
-                // Proof txs have priority over other txs:
-                IComparer<Transaction<NCAction>> txPriority = GetProofTxPriority(proof);
-
+                // All miner needs proof in permissioned mining.
+                StageProofTransaction();
                 block = await _chain.MineBlock(
                     Address,
                     DateTimeOffset.UtcNow,
                     cancellationToken: cancellationToken,
                     maxTransactions: maxTransactions,
-                    append: false,
-                    txPriority: txPriority);
+                    append: false);
 
                 _chain.Append(block);
-                if (_swarm is Swarm<NCAction> s && s.Running)
+                if (_swarm is Swarm<PolymorphicAction<ActionBase>> s && s.Running)
                 {
                     s.BroadcastBlock(block);
                 }
@@ -143,8 +137,8 @@ namespace Nekoyume.BlockChain
         }
 
         public Miner(
-            BlockChain<NCAction> chain,
-            Swarm<NCAction> swarm,
+            BlockChain<PolymorphicAction<ActionBase>> chain,
+            Swarm<PolymorphicAction<ActionBase>> swarm,
             PrivateKey privateKey,
             bool authorizedMiner
         )
@@ -154,12 +148,5 @@ namespace Nekoyume.BlockChain
             _privateKey = privateKey;
             AuthorizedMiner = authorizedMiner;
         }
-
-        public static IComparer<Transaction<NCAction>> GetProofTxPriority(
-            Transaction<NCAction> proofTx
-        ) =>
-            Comparer<Transaction<NCAction>>.Create(
-                (a, b) => a.Id.Equals(proofTx.Id) ? -1 : (b.Id.Equals(proofTx.Id) ? 1 : 0)
-            );
     }
 }

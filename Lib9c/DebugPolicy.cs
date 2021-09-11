@@ -30,6 +30,8 @@ namespace Lib9c
             return blocks.Count > 0 ? 1 : 0;
         }
 
+        public int MaxTransactionsPerBlock { get; } = int.MaxValue;
+
         public int GetMaxBlockBytes(long index) => int.MaxValue;
 
         public bool DoesTransactionFollowsPolicy(
@@ -40,12 +42,5 @@ namespace Lib9c
 
         public HashAlgorithmType GetHashAlgorithm(long index) =>
             HashAlgorithmType.Of<SHA256>();
-
-        public int GetMinTransactionsPerBlock(long index) => 0;
-
-        public int GetMaxTransactionsPerBlock(long index) => int.MaxValue;
-
-        public int GetMaxTransactionsPerSignerPerBlock(long index) =>
-            GetMaxTransactionsPerBlock(index);
     }
 }
