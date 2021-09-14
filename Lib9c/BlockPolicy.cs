@@ -39,23 +39,25 @@ namespace Nekoyume.BlockChain
             TimeSpan blockInterval,
             long minimumDifficulty,
             int difficultyBoundDivisor,
+            int minTransactionsPerBlock,
             int maxTransactionsPerBlock,
             int maxBlockBytes,
             int maxGenesisBytes,
-            Func<Transaction<NCAction>, BlockChain<NCAction>, bool> doesTransactionFollowPolicy = null
-        )
+            Func<Transaction<NCAction>, BlockChain<NCAction>, bool> doesTransactionFollowPolicy = null,
+            Func<long, int> getMaxTransactionsPerSignerPerBlock = null)
             : this(
                 blockAction: blockAction,
                 blockInterval: blockInterval,
                 minimumDifficulty: minimumDifficulty,
                 difficultyBoundDivisor: difficultyBoundDivisor,
+                minTransactionsPerBlock: minTransactionsPerBlock,
                 maxTransactionsPerBlock: maxTransactionsPerBlock,
                 maxBlockBytes: maxBlockBytes,
                 maxGenesisBytes: maxGenesisBytes,
                 ignoreHardcodedPolicies: false,
                 permissionedMiningPolicy: BlockChain.PermissionedMiningPolicy.Mainnet,
-                doesTransactionFollowPolicy: doesTransactionFollowPolicy
-            )
+                doesTransactionFollowPolicy: doesTransactionFollowPolicy,
+                getMaxTransactionsPerSignerPerBlock: getMaxTransactionsPerSignerPerBlock)
         {
         }
 
@@ -64,27 +66,29 @@ namespace Nekoyume.BlockChain
             TimeSpan blockInterval,
             long minimumDifficulty,
             int difficultyBoundDivisor,
+            int minTransactionsPerBlock,
             int maxTransactionsPerBlock,
             int maxBlockBytes,
             int maxGenesisBytes,
             bool ignoreHardcodedPolicies,
             PermissionedMiningPolicy? permissionedMiningPolicy,
-            Func<Transaction<NCAction>, BlockChain<NCAction>, bool> doesTransactionFollowPolicy = null
-        )
+            Func<Transaction<NCAction>, BlockChain<NCAction>, bool> doesTransactionFollowPolicy = null,
+            Func<long, int> getMaxTransactionsPerSignerPerBlock = null)
             : base(
                 blockAction: blockAction,
                 blockInterval: blockInterval,
                 minimumDifficulty: minimumDifficulty,
                 difficultyBoundDivisor: difficultyBoundDivisor,
+                minTransactionsPerBlock: minTransactionsPerBlock,
                 maxTransactionsPerBlock: maxTransactionsPerBlock,
                 maxBlockBytes: maxBlockBytes,
                 maxGenesisBytes: maxGenesisBytes,
                 doesTransactionFollowPolicy: doesTransactionFollowPolicy,
                 canonicalChainComparer: new CanonicalChainComparer(null),
 #pragma warning disable LAA1002
-                hashAlgorithmGetter: HashAlgorithmTable.ToHashAlgorithmGetter()
+                hashAlgorithmGetter: HashAlgorithmTable.ToHashAlgorithmGetter(),
 #pragma warning restore LAA1002
-            )
+                getMaxTransactionsPerSignerPerBlock: getMaxTransactionsPerSignerPerBlock)
         {
             _minimumDifficulty = minimumDifficulty;
             _difficultyBoundDivisor = difficultyBoundDivisor;
@@ -200,12 +204,12 @@ namespace Nekoyume.BlockChain
             {
                 return null;
             }
-            
+
             if (block.Index < policy.Threshold)
             {
                 return null;
             }
-            
+
             if (policy.Miners.Contains(miner) && block.Transactions.Any(t => t.Signer.Equals(miner)))
             {
                 return null;
